@@ -53,15 +53,33 @@ def import_scaled_game_data():
 
     with open('pkl_files/team_pred_names.pkl', 'rb') as file:
         team_pred_names = pickle.load(file)
+    
+    with open('pkl_files/game_id_list.pkl', 'rb') as file:
+        game_id_list = pickle.load(file)
  
 
-    return [scaled_game_pred_list, score_scaler, stat_scalers_list, scaled_train_game_data, scaled_train_score_data, team_train_names, team_test_names, team_pred_names, year_train_list, year_test_list, year_pred_list]
+    return [scaled_game_pred_list, score_scaler, stat_scalers_list, scaled_train_game_data, scaled_train_score_data, team_train_names, team_test_names, team_pred_names, year_train_list, year_test_list, year_pred_list, game_id_list]
 
+def split_data(full_data, X_pred_len, num_of_test_samples):
+    train = full_data.copy()[:-X_pred_len]
+    train = train[:-num_of_test_samples]
+    test = train[-num_of_test_samples:] # Use the last x games of the training data as a test set (num_of_test_samples)
+    pred = full_data[-X_pred_len:]
+
+    return train, test, pred
+
+def reshape_input(input_data):
+    reshaped_data = []
+    for data in input_data:
+        data = data.reshape(data.shape[0], -1)
+        reshaped_data.append(data)
+    
+    return reshaped_data
 
 def build_old_model(X):
 
     model = Sequential([
-        Input(shape=(X.shape[1],)),
+        Input(shape=(X.shape[1]),),
         Dense(256, activation='silu'),
         LayerNormalization(),
         Dropout(0.1),
@@ -130,8 +148,8 @@ def game_list_to_numpy_array(data):
         counter += 1
         if counter % 1000 == 0:
             print(f"Converting game {counter}/{len(data)} to numpy array")
-        if counter >= 1000:
-            break
+        '''if counter >= 1000:
+            break'''
         numpy_game = np.array([])
         for team in game:
             numpy_team = np.array([])
@@ -167,8 +185,8 @@ def flatten_game_list_to_numpy_array(data, train_and_test_names, len_of_train_an
         counter += 1
         if counter % 1000 == 0:
             print(f"Converting game {counter}/{len(data)} to numpy array")
-        if counter >= len_of_train_and_test+1: # Process the exact number of games in the combined train and test set
-            break
+        '''if counter >= len_of_train_and_test+1: # Process the exact number of games in the combined train and test set
+            break'''
 
         # Flatten all player stats from both teams into one 1D feature vector
         game_features = []
@@ -179,8 +197,11 @@ def flatten_game_list_to_numpy_array(data, train_and_test_names, len_of_train_an
         numpy_data.append(game_features)
 
         # Count number of scores to the same number as amount of games
-        end_name_list.append(train_and_test_names[counter - 1])
-        end_year_list.append(year_train_and_test[counter - 1])
+        try:
+            end_name_list.append(train_and_test_names[counter - 1])
+            end_year_list.append(year_train_and_test[counter - 1])
+        except IndexError:
+            pass
 
     # Pad/truncate so all games have equal length
     # numpy_data = pad_sequences(numpy_data, dtype='float32', padding='post', truncating='post')
@@ -273,6 +294,7 @@ def find_betting_line_errors(guess, actual):
     return over_under_error, total_error, moneyline_error
 
 
+
 def find_statistics(guesses, actuals, team_names, year_list):
     print("\nStatistics:")
     for i in range(len(guesses)):
@@ -314,7 +336,7 @@ def find_trends(guesses, actuals, team_names, year_list):
     print(f"Games predicted: {len(guesses)}")
 
 
-def test_data_structure(X, y, team_names, year_list, score_scaler):
+def test_data_structure(X, y, team_names, year_list, score_scaler, game_ids=None):
     # team_scores are the same for some reason?
 
     
@@ -330,140 +352,80 @@ def test_data_structure(X, y, team_names, year_list, score_scaler):
             for team_score in team_scores:
                 print(f"team_score: {team_score}")
                 print(f"unscaled team_score: {score_scaler.inverse_transform([[team_score]])}")
+            print(f"game_id: {game_ids[game_num]}")
             # team_scores = team_scores[game_num*2:game_num*2+2]  # Get the scores for the current game
             # print(f"team_scores sample: {team_scores[0]}, {team_scores[1]}")
         print(f"year_list sample: {year_list[game_num]}")
     return
 
 def main():
-    num_of_test_samples = 50      #########**************************************** Edit # of samples in test set here ****************************************#########
-    
     data_scaler = DataScaler()
     data_formatter = FormatData()
     players_per_team = data_formatter.players_per_team
     testing_player_stats = data_formatter.testing_player_stats
+
+    num_of_test_samples = 50      #########**************************************** Edit # of samples in test set here ****************************************#########
+
+    # Your known values ------ THESE MIGHT CHANGE IF I CHANGE THE NUMBER OF PLAYERS PER TEAM IN ARRANGE_DATA - Edit: Might not have to worry about this anymore
+    num_teams = 2
+    num_players = players_per_team
+
+
 
     import_list = import_scaled_game_data()
 
     score_scaler = import_list[1]
     stat_scalers_list = import_list[2]
 
-    scaled_game_pred_list = import_list[0]
-    scaled_train_game_data = import_list[3]
+    X_train = import_list[3]
+    X_pred = import_list[0]
+    X_pred_len = len(X_pred)
     scaled_train_score_data = import_list[4]
 
-    team_train_names = import_list[5]
-    team_test_names = import_list[6]
-    team_pred_names = import_list[7]
+    train_names = import_list[5]
+    test_names = import_list[6]
+    pred_names = import_list[7]
 
-    year_train_list = import_list[8]
-    year_test_list = import_list[9]
-    year_pred_list = import_list[10]
+    train_years = import_list[8]
+    test_years = import_list[9]
+    year_pred = import_list[10]
 
+    game_ids = import_list[11]
 
-    print(f"Imported scaled game prediction data and scalers.")
+    print(f"Imported scaled game prediction data and scalers.") # ##############################################################################################################
 
-    X_pred_len = len(scaled_game_pred_list)
-
-    X_train = scaled_train_game_data  
-    X_pred = scaled_game_pred_list
-
-    train_names = team_train_names
-    test_names = team_test_names
-
-
-    year_train = year_train_list
-    year_test = year_test_list
-    year_pred = year_pred_list
 
     # This section of code is to make sure test and train data both get padded to the same length, so they have the same dimensions.
     print(f"beginning X_train length: {len(X_train)}")
     print(f"beginning X_pred length: {len(X_pred)}")
 
     X_train_and_test = X_train + X_pred
-    print(f"combined X_train and X_pred length: {len(X_train_and_test)}")
-    train_and_test_names = train_names + test_names
-    print(f"combined train and test names length: {len(train_and_test_names)}")
-    year_train_and_test = year_train + year_test
-    print(f"combined year train and test length: {len(year_train_and_test)}")
+    train_and_test_names = train_names # + test_names
+    year_train_and_test = train_years # + test_years
     len_of_train_and_test = len(X_train_and_test)
-    
-    '''for i, item in enumerate(X_pred):
-        X_train.append(item)
-        train_names.append(test_names[i])'''
+    print(f"combined X_train and X_pred length: {len(X_train_and_test)}")
+    print(f"combined train and test names length: {len(train_and_test_names)}")
+    print(f"combined year train and test length: {len(year_train_and_test)}")
 
-
-    
-    print(f"appended X_pred to X_train, new length: {len(X_train)}")
 
     X_train_and_test_flattened, train_and_test_names, year_train_and_test = flatten_game_list_to_numpy_array(X_train_and_test, train_and_test_names, len_of_train_and_test, year_train_and_test)
+
+    X_train, X_test, X_pred = split_data(X_train_and_test_flattened, X_pred_len, num_of_test_samples)
+    # \/ I don't think these variables relate to X_train and X_pred. team_train_names relates to X_train, but team_test_names relates to the prediction, which I guess would be X_pred now that I think about it. 
+    team_train_names, team_test_names, team_pred_names = split_data(train_and_test_names, X_pred_len, num_of_test_samples)
+    year_train_list, year_test_list, year_pred_list = split_data(year_train_and_test, X_pred_len, num_of_test_samples)
     
-    print(f"new x_train_and_test_flattened type: {type(X_train_and_test_flattened)}")
-    print(f"new x_train_and_test_flattened length: {len(X_train_and_test_flattened)}")
-
-    X_train = X_train_and_test_flattened.copy()[:-X_pred_len]
-    X_train = X_train[:-num_of_test_samples]
-    X_test = X_train[-num_of_test_samples:] # Use the last 100 games of the training data as a test set (num_of_test_samples)
-    X_pred = X_train_and_test_flattened[-X_pred_len:]
-    
-    print(f"X_train shape: {X_train.shape}")
-    # I don't think these variables relate to X_train and X_pred. team_train_names relates to X_train, but team_test_names relates to the prediction, which I guess would be X_pred now that I think about it. 
-    team_train_names = train_and_test_names.copy()[:-X_pred_len]
-    team_train_names = team_train_names[:-num_of_test_samples]
-    team_test_names = team_train_names[-num_of_test_samples:]
-    team_pred_names = train_and_test_names[-X_pred_len:]
-
-    year_train_list = year_train_and_test.copy()[:-X_pred_len]
-    year_train_list = year_train_list[:-num_of_test_samples]
-    year_test_list = year_train_and_test[-num_of_test_samples:]
-    year_pred_list = year_train_and_test[-X_pred_len:]
-
-    print(f"len of X_train = {len(X_train)}")
-    print(f"len of X_test = {len(X_test)}")
-    print(f"len of X_pred = {len(X_pred)}")
-    # return
-
-    print(f"scaled_train_score_data: {scaled_train_score_data[:5]}, type: {type(scaled_train_score_data)}, length: {len(scaled_train_score_data)}, type of first item: {type(scaled_train_score_data[0])}")
     y_train = np.array(scaled_train_score_data)
-    print(f"y_train shape: {y_train.shape}")
-
     y_test = y_train[-num_of_test_samples:]
+    game_ids_train = game_ids.copy()[:-num_of_test_samples]
+    game_ids_test = game_ids[-num_of_test_samples:]
 
-    print(f"y_test shape: {y_test.shape}")
+    X_train, X_test, X_pred, y_train, y_test = reshape_input([X_train, X_test, X_pred, y_train, y_test])
 
-
-    print(f"Converted game data to numpy array.")
-    print(f"X shape: {X_train.shape}")
-    print(f"X_test shape: {X_test.shape}")
-    print(f"X_pred shape: {X_pred.shape}")
-    # return
-
-
-    print(f"Converted score data to numpy array.")
-    print(f"y shape: {y_train.shape}")
-    print(f"len of team_train_names: {len(team_train_names)}")
-    print(f"len of team_test_names: {len(team_test_names)}")
-    print(f"len of team_pred_names: {len(team_pred_names)}")
-    
-
-    X_train = X_train.reshape(X_train.shape[0], -1)
-    X_test = X_test.reshape(X_test.shape[0], -1)
-    X_pred = X_pred.reshape(X_pred.shape[0], -1)
-    y_train = y_train.reshape(y_train.shape[0], -1)
-    print(f"y_train[0]: {y_train[0]}")
-    print(f"y_train[1]: {y_train[1]}")
-    print(f"y_train[2]: {y_train[2]}")
-    print(f"y_train[3]: {y_train[3]}")
-    y_test = y_test.reshape(y_test.shape[0], -1)
-
-    # Your known values ------ THESE MIGHT CHANGE IF I CHANGE THE NUMBER OF PLAYERS PER TEAM IN ARRANGE_DATA
-    num_teams = 2
-    num_players = players_per_team
 
     # Compute number of stats per player
     num_features = X_train_and_test_flattened.shape[1] // (num_teams * num_players)
     print("Computed num_features per player =", num_features)
-
 
     # Reshape flattened → structured
     X_train_structured = structure_array(X_train, num_teams, num_players, num_features)
@@ -472,11 +434,12 @@ def main():
     
 
     print(f"Reshaped data for model input.")
+    # maybe check out if X_train team stats are being structured correctly above in structure_array(). (make sure 60 -> 2 30s correctly)
     print(f"X_train shape: {X_train_structured.shape}")
-
-    '''test_data_structure(X_train_structured, y_train, team_train_names, year_train_list, score_scaler)
-    test_data_structure(X_test_structured, y_test, team_test_names, year_test_list, score_scaler)
-    test_data_structure(X_pred_structured, None, team_pred_names, year_pred_list, score_scaler)'''
+    # return
+    # test_data_structure(X_train_structured, y_train, team_train_names, year_train_list, score_scaler)
+    test_data_structure(X_test_structured, y_test, team_test_names, year_test_list, score_scaler, game_ids_test)
+    test_data_structure(X_pred_structured, None, team_pred_names, year_pred_list, score_scaler, None)
 
     '''print(f"y_test[0] scaled = {y_test[0]}")
     print(f"y_test[1] scaled = {y_test[1]}")
@@ -485,10 +448,12 @@ def main():
     print(f"y_test[0] unscaled = {score_scaler.inverse_transform(y_test[0].reshape(-1, 1))}")
     print(f"y_test[1] unscaled = {score_scaler.inverse_transform(y_test[1].reshape(-1, 1))}")
     print(f"y_test[2] unscaled = {score_scaler.inverse_transform(y_test[2].reshape(-1, 1))}")'''
-    # return
+    
+    
+    return
 
     # model = build_old_model(X_train)
-    if not testing_player_stats:
+    if testing_player_stats:
         model = build_old_model(X_train_structured)
     else:
         model = build_new_model(num_players, num_features)
@@ -509,10 +474,12 @@ def main():
     print(f"\nDaily predictions complete.")
 
 
-    # Next Steps: 
-    # Find average error, over/under error, total error, etc. for test set
-    # 
+    # What we know:
+    # 1) For testing (at least), the team names and team scores are mixed up. They are 50 spaces apart (I think) in the csv, so I just have to figure out why that is. 
+        # Might have figured this out, but need to see why some values are being grabbed at 1123 instad of 1180 (or something like that). 
+    # 2) The prediction data is showing that it is grabbing the first games of the season, instead of daily games. 
 
+    # Lucky Number (error) = 5
 
 if __name__ == "__main__":
     main()

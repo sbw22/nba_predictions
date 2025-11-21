@@ -363,7 +363,7 @@ class FormatData:
         # fieldnames = ['GAME_ID', 'TEAM_IDS', 'GAME_YEAR', 'SCORES', 'TEAM1_PLAYER_STATS', 'TEAM2_PLAYER_STATS']
 
         data_list = [fieldnames] + data_list
-        print(f"type of data_list: {type(data_list)}")
+        # print(f"type of data_list: {type(data_list)}")
         
         with open(file_path, mode='w', newline='') as csv_file:
             writer = csv.writer(csv_file) #, fieldnames=fieldnames)
@@ -445,6 +445,18 @@ def main():
     print(f"len of game_test_list: {len(game_test_list)}")
     print(f"len of name_train_list: {len(name_train_list)}")
     print(f"len of name_test_list: {len(name_test_list)}")
+    print(f"len of year_train_list: {len(year_train_list)}")
+    print(f"len of year_test_list: {len(year_test_list)}")
+    print(f"game_train_list[0]: {game_train_list[0]}")
+
+    
+    game_ids = [game[0] for game in game_train_list]
+    print(f"len of game_ids: {len(game_ids)}")
+
+    print(f"first 3 game ids in game_ids: {game_ids[-50:-47]}")
+    print(f"first 3 scores in alt_score_test_list: {alt_score_test_list[-50:-47]}")
+    print(f"first 3 names in name_test_list: {name_test_list[-50:-47]}")
+
 
     data_formatter.export_to_csv(game_train_list, "csv_data_files/game_train_data.csv", ['GAME_ID', 'TEAM_IDS', 'GAME_YEAR', 'SCORES', 'TEAM1_PLAYER_STATS', 'TEAM2_PLAYER_STATS'])
     data_formatter.export_to_csv(game_test_list, "csv_data_files/game_test_data.csv", ['GAME_ID', 'TEAM_IDS', 'GAME_YEAR', 'SCORES', 'TEAM1_PLAYER_STATS', 'TEAM2_PLAYER_STATS'])
@@ -462,6 +474,8 @@ def main():
         pickle.dump(year_train_list, file)
     with open('pkl_files/year_test_list.pkl', 'wb') as file:
         pickle.dump(year_test_list, file)
+    with open('pkl_files/game_id_list.pkl', 'wb') as file:
+        pickle.dump(game_ids, file)
 
     #data_formatter.export_to_csv(name_train_list, "csv_data_files/game_train_names.csv", ['TEAM1_NAME', 'TEAM2_NAME'])
     #data_formatter.export_to_csv(name_test_list, "csv_data_files/game_test_names.csv", ['TEAM1_NAME', 'TEAM2_NAME'])

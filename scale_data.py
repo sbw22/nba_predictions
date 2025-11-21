@@ -67,9 +67,13 @@ class DataScaler:
 
         for game_scores in score_train_data:
             counter += 1
-            if counter >= 1000: # This is just to limit the number of games for now. MAKE SURE THIS IS THE SAME NUMBER AS IN THE CORRESPONDING TRAIN_MODEL FUNCTIONS
+            '''if counter >= 1000: # This is just to limit the number of games for now. MAKE SURE THIS IS THE SAME NUMBER AS IN THE CORRESPONDING TRAIN_MODEL FUNCTIONS
+                break'''
+            try:
+                score_train_list.append(ast.literal_eval(game_scores))
+            except Exception as e:
+                print(f"Error parsing game scores: {e}")
                 break
-            score_train_list.append(ast.literal_eval(game_scores))
         
         print(f"score_train_list: {score_train_list[:5]}, type: {type(score_train_list)}, length: {len(score_train_list)}, type of first item: {type(score_train_list[0])}")
         
@@ -152,8 +156,8 @@ class DataScaler:
         counter = 0
         for game in stat_data:
             counter += 1
-            if counter >= 1000:  # Only process the first 1000 games for now
-                break
+            '''if counter >= 1000:  # Only process the first 1000 games for now
+                break'''
             if counter % 1000 == 0:
                 print(f"Scaling game {counter}/{len(stat_data)}")
             team_stats = game[4] # Assuming game[4] contains the team stats
