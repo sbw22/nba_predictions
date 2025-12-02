@@ -1,0 +1,4 @@
+# Large files that exceed GitHub limits
+pkl_files/scaled_train_game_data.pkl
+csv_data_files/game_train_data.csv
+csv_data_files/game_train_stats.csv

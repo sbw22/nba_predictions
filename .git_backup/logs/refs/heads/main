@@ -1,0 +1,11 @@
+0000000000000000000000000000000000000000 6a5d7029ed7028533e536835755e8f6d278a7360 Spencer Weishaar <sbweishaar@icloud.com> 1763757945 -0600	commit (initial): Initial commit - NBA predictions project with clean history
+6a5d7029ed7028533e536835755e8f6d278a7360 6a5d7029ed7028533e536835755e8f6d278a7360 Spencer Weishaar <sbweishaar@icloud.com> 1763757954 -0600	Branch: renamed refs/heads/main to refs/heads/main
+6a5d7029ed7028533e536835755e8f6d278a7360 8a8168e9932df1744206b9244aeefee1974ed938 Spencer Weishaar <sbweishaar@icloud.com> 1763768213 -0600	commit: Need to figure out model train data bug
+8a8168e9932df1744206b9244aeefee1974ed938 7f664bf505fe23f5ae313ab755e2415e9edaa48f Spencer Weishaar <sbweishaar@icloud.com> 1763963630 -0600	commit: Pushing before change to split_data
+7f664bf505fe23f5ae313ab755e2415e9edaa48f dc6da2827e6be53cb6af5dfcfd7259d9a267b45f Spencer Weishaar <sbweishaar@icloud.com> 1763971877 -0600	commit: I think I fixed the split issue between X, y, names, and years. 99% sure. Model results back this up I think
+dc6da2827e6be53cb6af5dfcfd7259d9a267b45f 7570dea1f90d184e21b077bca9d3e27c8ba2ad71 Spencer Weishaar <sbweishaar@icloud.com> 1764389579 -0600	commit: Added a couple functions to the model architecture and training, such as custom loss functions, more model archetecture, and ensemble models
+7570dea1f90d184e21b077bca9d3e27c8ba2ad71 6bddeceedb39482d87d95eea5c7f44f96406a5ba Spencer Weishaar <sbweishaar@icloud.com> 1764710444 -0600	commit: Add correlation analysis and update model training code
+6bddeceedb39482d87d95eea5c7f44f96406a5ba 992e4167b540bdfb01171ea31b379c4d58b5f8a0 Spencer Weishaar <sbweishaar@icloud.com> 1764710708 -0600	commit (amend): Add correlation analysis and update model training code (exclude large data files)
+992e4167b540bdfb01171ea31b379c4d58b5f8a0 dc6da2827e6be53cb6af5dfcfd7259d9a267b45f Spencer Weishaar <sbweishaar@icloud.com> 1764710738 -0600	reset: moving to HEAD~2
+dc6da2827e6be53cb6af5dfcfd7259d9a267b45f 23bb55ea8bd09ba6f90e544c0f683d80e79930ed Spencer Weishaar <sbweishaar@icloud.com> 1764710747 -0600	commit: Add correlation analysis and update model training code
+23bb55ea8bd09ba6f90e544c0f683d80e79930ed d79add09be0476371bf806b81b655552001bdb14 Spencer Weishaar <sbweishaar@icloud.com> 1764710794 -0600	commit: Remove large data files to comply with GitHub size limits
