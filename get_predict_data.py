@@ -96,9 +96,9 @@ def getting_future_game_data(data_formatter, train_game_dict_list):
     # player_dict_list, game_dict_list, 
     # player_stat_names
 
-    percentage_stat_names = ['W_PCT', 'FG_PCT', 'FG3_PCT', 'FT_PCT']
-    average_stat_names = ['MIN', 'FGM', 'FGA', 'FG3M', 'FG3A', 'FTM', 'FTA', 'OREB', 'DREB', 'REB', 'AST', 'TOV', 'STL', 'BLK', 'BLKA', 'PF', 'PFD', 'PTS', 'PLUS_MINUS']
-    ranked_stat_names = ['W_RANK', 'L_RANK', 'W_PCT_RANK', 'MIN_RANK', 'FGM_RANK', 'FGA_RANK', 'FG_PCT_RANK', 'FG3M_RANK', 'FG3A_RANK', 'FG3_PCT_RANK', 'FTM_RANK', 'FTA_RANK', 'FT_PCT_RANK', 'OREB_RANK', 'DREB_RANK', 'REB_RANK', 'AST_RANK', 'TOV_RANK', 'STL_RANK', 'BLK_RANK', 'BLKA_RANK', 'PF_RANK', 'PFD_RANK', 'PTS_RANK', 'PLUS_MINUS_RANK']
+    percentage_stat_names = data_formatter.percentage_player_stat_names
+    average_stat_names = data_formatter.average_player_stat_names
+    ranked_stat_names = data_formatter.ranked_player_stat_names
 
     player_stat_names = [percentage_stat_names, average_stat_names, ranked_stat_names]
     ext_player_stat_names = percentage_stat_names + average_stat_names + ranked_stat_names

@@ -12,9 +12,20 @@ class FormatData:
     testing_player_stats = True
 
     # Stats of players
+    '''
     percentage_player_stat_names = ['W_PCT', 'FG_PCT', 'FG3_PCT', 'FT_PCT']
     average_player_stat_names = ['MIN', 'FGM', 'FGA', 'FG3M', 'FG3A', 'FTM', 'FTA', 'OREB', 'DREB', 'REB', 'AST', 'TOV', 'STL', 'BLK', 'BLKA', 'PF', 'PFD', 'PTS', 'PLUS_MINUS']
     ranked_player_stat_names = ['W_RANK', 'L_RANK', 'W_PCT_RANK', 'MIN_RANK', 'FGM_RANK', 'FGA_RANK', 'FG_PCT_RANK', 'FG3M_RANK', 'FG3A_RANK', 'FG3_PCT_RANK', 'FTM_RANK', 'FTA_RANK', 'FT_PCT_RANK', 'OREB_RANK', 'DREB_RANK', 'REB_RANK', 'AST_RANK', 'TOV_RANK', 'STL_RANK', 'BLK_RANK', 'BLKA_RANK', 'PF_RANK', 'PFD_RANK', 'PTS_RANK', 'PLUS_MINUS_RANK']
+    '''
+    # These values are taken from the correlation analysis to trim down the number of stats used for modeling
+    trimmed_percentage_player_stat_names = ['W_PCT']
+    trimmed_average_player_stat_names = ['BLKA', 'PLUS_MINUS']
+    trimmed_ranked_player_stat_names = ['W_RANK', 'L_RANK', 'W_PCT_RANK', 'FG3_PCT_RANK', 'BLK_RANK', 'PF_RANK', 'PLUS_MINUS_RANK']
+
+    percentage_player_stat_names = trimmed_percentage_player_stat_names
+    average_player_stat_names = trimmed_average_player_stat_names
+    ranked_player_stat_names = trimmed_ranked_player_stat_names
+
 
     player_stat_names = [percentage_player_stat_names, average_player_stat_names, ranked_player_stat_names]
     ext_player_stat_names = percentage_player_stat_names + average_player_stat_names + ranked_player_stat_names

@@ -235,7 +235,7 @@ def train_model(X, y, model):
     )
 
     # Train the model
-    model.fit(X, y, epochs=500, validation_split=0.3, batch_size=64, callbacks=[early_stop, checkpoint, reduce_lr])
+    model.fit(X, y, epochs=300, validation_split=0.3, batch_size=64, callbacks=[reduce_lr])     # took out early_stop and checkpoint for now
 
     return model
 

@@ -140,13 +140,72 @@ def sort_corrs(stat_correlations, title):
         print(f"Stat: {stat_name} | Correlation: {correlation[0]}")
     
     print(f"sorted_stats: {sorted_stats}")
+
+    return sorted_stats
+
+
+def graph_correlations(stat_correlations, title):
+    import matplotlib.pyplot as plt
+
+    stat_names = [item[0] for item in stat_correlations]
+    correlations = [item[1][0] for item in stat_correlations]
+    
+    # Split data into two halves
+    mid_point = len(stat_names) // 2
+    first_half_names = stat_names[:mid_point]
+    first_half_corrs = correlations[:mid_point]
+    second_half_names = stat_names[mid_point:]
+    second_half_corrs = correlations[mid_point:]
+
+    # Create figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 4))
+
+    # First half (top subplot)
+    bars1 = ax1.bar(first_half_names, first_half_corrs, color='skyblue', width=0.4)
+    ax1.set_ylabel('Pearson Correlation with Score Difference')
+    ax1.set_title(f'{title} - Part 1')
+    ax1.tick_params(axis='x', rotation=45)
+    ax1.set_ylim(-1, 1)
+    
+    # Add correlation values on top of bars for first half
+    for bar, corr in zip(bars1, first_half_corrs):
+        height = bar.get_height()
+        ax1.text(bar.get_x() + bar.get_width() / 2, height,
+                 f'{corr:.2f}', ha='center', va='bottom')
+
+    # Second half (bottom subplot)
+    bars2 = ax2.bar(second_half_names, second_half_corrs, color='skyblue', width=0.4)
+    ax2.set_xlabel('Statistics')
+    ax2.set_ylabel('Pearson Correlation with Score Difference')
+    ax2.set_title(f'{title} - Part 2')
+    ax2.tick_params(axis='x', rotation=45)
+    ax2.set_ylim(-1, 1)
+    
+    # Add correlation values on top of bars for second half
+    for bar, corr in zip(bars2, second_half_corrs):
+        height = bar.get_height()
+        ax2.text(bar.get_x() + bar.get_width() / 2, height,
+                 f'{corr:.2f}', ha='center', va='bottom')
+
+    plt.tight_layout()
     
 
 
 def find_trends(home_stat_correlations, away_stat_correlations):
+    import matplotlib.pyplot as plt
 
-    sort_corrs(home_stat_correlations, "Home Team Stat Correlations")
-    sort_corrs(away_stat_correlations, "Away Team Stat Correlations")
+    sorted_home_corrs = sort_corrs(home_stat_correlations, "Home Team Stat Correlations")
+    sorted_away_corrs = sort_corrs(away_stat_correlations, "Away Team Stat Correlations")
+
+    # Create both graphs
+    graph_correlations(sorted_home_corrs, "Home Team Stat Correlations with Score Difference")
+    graph_correlations(sorted_away_corrs, "Away Team Stat Correlations with Score Difference")
+    
+    # Show all figures at once
+    plt.show()
+
+
+
 
 
 def main():
