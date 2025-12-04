@@ -235,7 +235,7 @@ def train_model(X, y, model):
     )
 
     # Train the model
-    model.fit(X, y, epochs=300, validation_split=0.3, batch_size=64, callbacks=[reduce_lr])     # took out early_stop and checkpoint for now
+    model.fit(X, y, epochs=500, validation_split=0.3, batch_size=64, callbacks=[early_stop, checkpoint, reduce_lr])
 
     return model
 
@@ -651,7 +651,7 @@ def main():
     test_predictions = run_model(model, X_test_structured, y_test, score_scaler, team_test_names, year_test_list)
     print(f"Test predictions complete.")
     print(f"running predictions on daily data...")
-    # daily_predictions = run_model(model, X_pred_structured, y_pred_dummy, score_scaler, team_pred_names, year_pred_list, pred=True)
+    daily_predictions = run_model(model, X_pred_structured, y_pred_dummy, score_scaler, team_pred_names, year_pred_list, pred=True)
     print(f"\nDaily predictions complete.")
 
 
