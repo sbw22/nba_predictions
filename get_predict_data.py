@@ -40,7 +40,7 @@ def get_scoreboard_data():
     current_date = current_date.strftime("%m/%d/%Y")
     next_day = next_day .strftime("%m/%d/%Y")
 
-    # current_date = next_day   ##########################################################################
+    # current_date = next_day   #######################################################################################################################
     
 
     board = scoreboardv2.ScoreboardV2(game_date=current_date)

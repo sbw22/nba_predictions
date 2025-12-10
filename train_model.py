@@ -563,7 +563,7 @@ def main():
     loss_funcs = LossFuncs()
     residual_archs = ResidualArch()
     ensemble_models = EnsembleModels()
-    loss = loss_funcs.betting_loss(mse_weight=1.0, moneyline_weight=0.3, spread_weight=0.2, total_weight=0.1)
+    loss = loss_funcs.betting_loss(mse_weight=1.0, moneyline_weight=0.2, spread_weight=0.55, total_weight=0.1)
     # model = build_old_model(X_train)
     if True:  # testing_player_stats:
         # model = build_old_model(X_train)
