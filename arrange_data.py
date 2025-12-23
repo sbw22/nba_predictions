@@ -1,6 +1,9 @@
 import pandas as pd
+import sys
 import csv
 import pickle
+from nba_api.stats.endpoints import boxscoretraditionalv2
+
 
 
 class FormatData:
@@ -176,18 +179,28 @@ class FormatData:
         sorted_players = sorted(list_of_players, key=lambda x: x[stat_index], reverse=True)
         return sorted_players
 
-    def get_player_stats_for_game(self, team_id, game_year, player_dict_list, team_dict_list, player_stat_names, players_per_team, testing_player_stats, print_info=False):
+    def get_player_stats_for_game(self, team_id, game_id, game_year, player_dict_list, team_dict_list, player_stat_names, players_per_team, testing_player_stats, from_predict):
 
         # should be in the same format as the player stats
         list_of_team_stats = self.get_team_stats_for_game(team_id, game_year, team_dict_list)
 
         # This line determines whether we are training on player stats or team stats! Comment it out to train on player stats. Edit: don't really have to worry about this now
         # *************************************************************************************************
+
         if not testing_player_stats:
             return list_of_team_stats
 
-        '''if print_info:
-            print(f"in get_player_stats_for_game, team_id: {team_id}, game_year: {game_year}")'''
+        if not from_predict:
+            try:
+                df = boxscoretraditionalv2.BoxScoreTraditionalV2(game_id=game_id).get_data_frames()[0]
+                print(f"successfully fetched box score for game_id={game_id}")
+                print("df from boxscoretraditionalv2: ", df.head())
+                sys.exit(0)
+            except KeyError as e:
+                print(f"Error: Could not fetch box score for game_id={game_id}. Using team stats instead.")
+                
+        
+        # sys.exit(0)
         
         # Find players for the given team and game year
 
@@ -196,6 +209,7 @@ class FormatData:
         player_counter = 0 # Counter to limit the number of players per team. This can be a parameter to tune the model.
         # max_players_per_team = 8
         max_players_per_team = players_per_team
+
 
         for player in player_dict_list:
 
@@ -238,18 +252,20 @@ class FormatData:
             player_list.extend(average_stats)
             player_list.extend(ranked_stats)
 
+            # print(f"player_list: {player_list}")
+            # sys.exit(0)
+
             list_of_players.append(player_list)
 
         # print(f"list_of_players: {len(list_of_players)}")
 
         list_of_players = self.sort_players_by_stat(list_of_players, -1)  # Sort players by last stat (right now), should be plus_minus_rank
 
-
         return list_of_players
 
 
 
-    def game_format(self, player_dict_list, game_dict_list, team_dict_list, player_stat_names, players_per_team, testing_player_stats, get_scores=True):
+    def game_format(self, player_dict_list, game_dict_list, team_dict_list, player_stat_names, players_per_team, testing_player_stats, from_predict, get_scores=True):
 
         # players_per_team preset to 1 to assume we are getting team stats. 
 
@@ -290,9 +306,8 @@ class FormatData:
             #print(f"team1_score = {team1_score}, team2_score = {team2_score}")
             #print(f"plus-minus = {game['PLUS_MINUS']}")
 
-            team1_player_stats = self.get_player_stats_for_game(team_id, game_year, player_dict_list, team_dict_list, player_stat_names, players_per_team, testing_player_stats)
-
-            
+            team1_player_stats = self.get_player_stats_for_game(team_id, game_id, game_year, player_dict_list, team_dict_list, player_stat_names, players_per_team, testing_player_stats, from_predict)
+             
 
             # return
 
@@ -459,8 +474,8 @@ def main():
     print(f"stat_names: {len(player_stat_names)}")
 
 
-    game_train_list = data_formatter.game_format(train_player_dict_list, train_game_dict_list, train_teams_list, player_stat_names, players_per_team, testing_player_stats)
-    game_test_list = data_formatter.game_format(test_player_dict_list, test_game_dict_list, test_teams_list, player_stat_names, players_per_team, testing_player_stats)
+    game_train_list = data_formatter.game_format(train_player_dict_list, train_game_dict_list, train_teams_list, player_stat_names, players_per_team, testing_player_stats, from_predict=False)
+    game_test_list = data_formatter.game_format(test_player_dict_list, test_game_dict_list, test_teams_list, player_stat_names, players_per_team, testing_player_stats, from_predict=True)
     print(f"game_train_list length: {len(game_train_list)}")
 
     # These two lists contain lists of 2 scores, one for each team in the game

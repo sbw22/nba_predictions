@@ -32,10 +32,10 @@ class CollectGameAndPlayerData:
                 import nba_api.stats.endpoints as endpoints_module
                 endpoint_callable = getattr(endpoints_module, endpoint)
 
-            if endpoint != 'BoxScoreTraditionalV2':
+            if endpoint != 'BoxScoreTraditionalV3':
                 data = endpoint_callable(season=season_str)
             else:
-                data = endpoint_callable(game_id='0022400001')  # Example game ID for boxscore data
+                data = endpoint_callable(game_id=season)  # Example game ID for boxscore data
 
             print(f"endpoint = {endpoint}")
             df = data.get_data_frames()[0]
@@ -67,6 +67,20 @@ class CollectGameAndPlayerData:
 
         return players_df_test
     
+    def get_boxscore_targeted_data(self, game_ids):
+        
+        all_data = []
+
+
+        for game_id in game_ids:
+            print(f"Getting boxscore data for game_id: {game_id}")
+            boxscore_data = self.collect_data(game_id, 'BoxScoreTraditionalV2')
+            all_data.extend(boxscore_data)
+
+        boxscores_df = pd.concat(all_data, ignore_index=True)
+
+        return boxscores_df
+    
             
 
     def get_player_data(self):
@@ -85,7 +99,7 @@ class CollectGameAndPlayerData:
         test_games_df = self.get_targeted_data(starting_test_season, 2025, 'LeagueGameLog')
         test_games_df.to_csv('csv_data_files/nba_game_logs_2000-2024.csv', index=False)
 
-        train_games_df = self.get_targeted_data(2025, 2026, 'LeagueGameLog')
+        '''train_games_df = self.get_targeted_data(2025, 2026, 'LeagueGameLog')
         train_games_df.to_csv('csv_data_files/nba_game_logs_2025.csv', index=False)
 
         print(f"Collecting team data...")
@@ -93,7 +107,14 @@ class CollectGameAndPlayerData:
         train_teams_df.to_csv('csv_data_files/nba_team_averages_2000-2024.csv', index=False)
 
         test_teams_df = self.get_targeted_data(2025, 2026, 'LeagueDashTeamStats')
-        test_teams_df.to_csv('csv_data_files/nba_team_averages_2025.csv', index=False)
+        test_teams_df.to_csv('csv_data_files/nba_team_averages_2025.csv', index=False)'''
+        
+        test_games_ids = test_games_df['GAME_ID'].tolist()
+        unique_test_games_ids = list(dict.fromkeys(test_games_ids))
+
+        print(f"getting boxscore data...")
+        train_games_players_df = self.get_targeted_data(2025, 2026, 'BoxScoreTraditionalV3')
+        train_games_players_df.to_csv('csv_data_files/nba_boxscores_2000-2024.csv', index=False)
 
 
         return test_players_df, train_players_df, test_games_df, train_games_df, test_teams_df, train_teams_df
