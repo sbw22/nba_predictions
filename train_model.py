@@ -11,9 +11,9 @@ from keras.callbacks import ReduceLROnPlateau
 from keras.models import Sequential, Model
 from keras.layers import Activation
 from tensorflow.keras.layers import Flatten, Dropout, BatchNormalization, Concatenate, Input, LayerNormalization, Lambda, MultiHeadAttention
+from sklearn.model_selection import GridSearchCV
 from keras.regularizers import l2
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-import tensorflow as tf
 from keras.optimizers import Adam
 from keras.metrics import categorical_crossentropy
 import tensorflow as tf
@@ -23,6 +23,7 @@ from keras.callbacks import EarlyStopping
 from keras.callbacks import ModelCheckpoint
 import numpy as np
 import pandas as pd
+import xgboost as xgb
 
 def import_scaled_game_data():
 
@@ -412,6 +413,125 @@ def verify_alignment(X_structured, y, team_names, year_list, score_scaler):
 
 
 
+def xgboost_model(X_train_structured, y_train, X_test_structured, y_test, X_pred_structured, score_scaler, team_test_names, year_test_list, team_pred_names, year_pred_list):
+
+    # Need to learn how to implement GridSearchCV with XGBoost properly
+    param_grid = {
+    'max_depth': [4, 6, 8],
+    'learning_rate': [0.01, 0.05, 0.1],
+    'n_estimators': [300, 500, 700],
+    'min_child_weight': [1, 3, 5],
+    'subsample': [0.8, 0.9, 1.0]
+    }
+
+    grid_search = GridSearchCV(
+        xgb.XGBRegressor(random_state=42),
+        param_grid,
+        cv=3,
+        scoring='neg_mean_squared_error',
+        n_jobs=-1
+    )
+    
+    # ... [all your existing data loading and preprocessing code] ...
+    
+    # After you have X_train_structured, y_train, etc.
+    
+    # Flatten the structured data for XGBoost (it expects 2D input)
+    X_train_flat = X_train_structured.reshape(X_train_structured.shape[0], -1)
+    X_test_flat = X_test_structured.reshape(X_test_structured.shape[0], -1)
+    X_pred_flat = X_pred_structured.reshape(X_pred_structured.shape[0], -1)
+    
+    print(f"Flattened X_train shape: {X_train_flat.shape}")
+    
+    # Build XGBoost models (one for each team's score)
+    print("Training XGBoost models...")
+    
+    # Model for Team 1 scores
+    model_team1 = xgb.XGBRegressor(
+        n_estimators=500,
+        learning_rate=0.05,
+        max_depth=6,
+        min_child_weight=3,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        gamma=0.1,
+        reg_alpha=0.1,
+        reg_lambda=1.0,
+        objective='reg:squarederror',
+        random_state=42,
+        early_stopping_rounds=25
+    )
+    
+    # Model for Team 2 scores
+    model_team2 = xgb.XGBRegressor(
+        n_estimators=500,
+        learning_rate=0.05,
+        max_depth=6,
+        min_child_weight=3,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        gamma=0.1,
+        reg_alpha=0.1,
+        reg_lambda=1.0,
+        objective='reg:squarederror',
+        random_state=42,
+        early_stopping_rounds=25
+    )
+    
+    # Split into train/validation
+    from sklearn.model_selection import train_test_split
+    X_train_split, X_val_split, y_train_split, y_val_split = train_test_split(
+        X_train_flat, y_train, test_size=0.3, random_state=42
+    )
+    
+    # Train Team 1 model
+    print("Training Team 1 score model...")
+    model_team1.fit(
+        X_train_split, y_train_split[:, 0],
+        eval_set=[(X_val_split, y_val_split[:, 0])],
+        verbose=50
+    )
+    
+    # Train Team 2 model
+    print("Training Team 2 score model...")
+    model_team2.fit(
+        X_train_split, y_train_split[:, 1],
+        eval_set=[(X_val_split, y_val_split[:, 1])],
+        verbose=50
+    )
+    
+    print("Training complete.")
+    
+    # Make predictions
+    print("Running predictions on test data...")
+    test_pred_team1 = model_team1.predict(X_test_flat)
+    test_pred_team2 = model_team2.predict(X_test_flat)
+    test_predictions = np.column_stack([test_pred_team1, test_pred_team2])
+    
+    # Unscale and evaluate
+    scaled_up_test = score_scaler.inverse_transform(test_predictions)
+    rounded_test = np.round(scaled_up_test).tolist()
+    
+    scaled_up_actual = score_scaler.inverse_transform(y_test)
+    rounded_actual = np.round(scaled_up_actual).tolist()
+    
+    find_trends(rounded_test, rounded_actual, team_test_names, year_test_list)
+    
+    # Daily predictions
+    print("Running predictions on daily data...")
+    daily_pred_team1 = model_team1.predict(X_pred_flat)
+    daily_pred_team2 = model_team2.predict(X_pred_flat)
+    daily_predictions = np.column_stack([daily_pred_team1, daily_pred_team2])
+    
+    scaled_up_daily = score_scaler.inverse_transform(daily_predictions)
+    rounded_daily = np.round(scaled_up_daily).tolist()
+    
+    # find_betting_lines(rounded_daily, team_pred_names, year_pred_list)
+
+    return
+
+
+
 def main():
     data_scaler = DataScaler()
     data_formatter = FormatData()
@@ -557,13 +677,17 @@ def main():
     verify_alignment(X_train_structured, y_train, team_train_names, year_train_list, score_scaler)
     verify_alignment(X_test_structured, y_test, team_test_names, year_test_list, score_scaler)
 
-    # return
+
+    if False:  # Switch to False to use neural network instead
+        xgboost_model(X_train_structured, y_train, X_test_structured, y_test, X_pred_structured, score_scaler, team_test_names, year_test_list, team_pred_names, year_pred_list)
+
+        return
     
     # ------------------------------------------------------ CHANGE MODEL BUILDING HERE ---------------------------------------------------------
     loss_funcs = LossFuncs()
     residual_archs = ResidualArch()
     ensemble_models = EnsembleModels()
-    loss = loss_funcs.betting_loss(mse_weight=1.0, moneyline_weight=0.2, spread_weight=0.55, total_weight=0.1)
+    loss = loss_funcs.betting_loss(mse_weight=1.0, moneyline_weight=0.3, spread_weight=0.2, total_weight=0.2)
     # model = build_old_model(X_train)
     if True:  # testing_player_stats:
         # model = build_old_model(X_train)

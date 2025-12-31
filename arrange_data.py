@@ -15,19 +15,19 @@ class FormatData:
     testing_player_stats = True
 
     # Stats of players
-    '''
+    
     percentage_player_stat_names = ['W_PCT', 'FG_PCT', 'FG3_PCT', 'FT_PCT']
     average_player_stat_names = ['MIN', 'FGM', 'FGA', 'FG3M', 'FG3A', 'FTM', 'FTA', 'OREB', 'DREB', 'REB', 'AST', 'TOV', 'STL', 'BLK', 'BLKA', 'PF', 'PFD', 'PTS', 'PLUS_MINUS']
     ranked_player_stat_names = ['W_RANK', 'L_RANK', 'W_PCT_RANK', 'MIN_RANK', 'FGM_RANK', 'FGA_RANK', 'FG_PCT_RANK', 'FG3M_RANK', 'FG3A_RANK', 'FG3_PCT_RANK', 'FTM_RANK', 'FTA_RANK', 'FT_PCT_RANK', 'OREB_RANK', 'DREB_RANK', 'REB_RANK', 'AST_RANK', 'TOV_RANK', 'STL_RANK', 'BLK_RANK', 'BLKA_RANK', 'PF_RANK', 'PFD_RANK', 'PTS_RANK', 'PLUS_MINUS_RANK']
-    '''
+    
     # These values are taken from the correlation analysis to trim down the number of stats used for modeling
     trimmed_percentage_player_stat_names = ['W_PCT']
     trimmed_average_player_stat_names = ['BLKA', 'PLUS_MINUS']
     trimmed_ranked_player_stat_names = ['W_RANK', 'L_RANK', 'W_PCT_RANK', 'FG3_PCT_RANK', 'BLK_RANK', 'PF_RANK', 'PLUS_MINUS_RANK']
 
-    percentage_player_stat_names = trimmed_percentage_player_stat_names
-    average_player_stat_names = trimmed_average_player_stat_names
-    ranked_player_stat_names = trimmed_ranked_player_stat_names
+    #percentage_player_stat_names = trimmed_percentage_player_stat_names
+    #average_player_stat_names = trimmed_average_player_stat_names
+    #ranked_player_stat_names = trimmed_ranked_player_stat_names
 
 
     player_stat_names = [percentage_player_stat_names, average_player_stat_names, ranked_player_stat_names]
@@ -64,6 +64,8 @@ class FormatData:
         # print(test_teams_df.head())
         train_teams_df = self.import_data('csv_data_files/nba_team_averages_2000-2024.csv')
         # print(train_teams_df.head())
+        boxscores_df = self.import_data('csv_data_files/nba_boxscores_2000-2024.csv')
+        # print(boxscores_df.head())
 
         print(f"type of train_player_df: {type(train_player_df)}")
 
@@ -73,8 +75,9 @@ class FormatData:
         test_game_dict_list = self.df_to_dict(test_game_df)
         train_teams_dict_list = self.df_to_dict(train_teams_df)
         test_teams_dict_list = self.df_to_dict(test_teams_df)
+        boxscores_dict_list = self.df_to_dict(boxscores_df)
 
-        return [train_player_dict_list, test_player_dict_list, train_game_dict_list, test_game_dict_list, train_teams_dict_list, test_teams_dict_list]
+        return [train_player_dict_list, test_player_dict_list, train_game_dict_list, test_game_dict_list, train_teams_dict_list, test_teams_dict_list, boxscores_dict_list]
 
     def df_to_dict(self, df):
         new_dict = df.to_dict(orient='records')
@@ -174,30 +177,51 @@ class FormatData:
 
         return team_stats_list
     
-    def sort_players_by_stat(self, list_of_players, stat_index):
+    def sort_players_by_stat(self, max_players_per_team, list_of_players, stat_index):
         # Sort the list of players by the specified stat index in descending order
         sorted_players = sorted(list_of_players, key=lambda x: x[stat_index], reverse=True)
-        return sorted_players
+        return sorted_players[:max_players_per_team]
+    
+    def find_players_who_played_in_game(self, team_id, game_id, boxscores_dict_list):
+        players_in_game = []
 
-    def get_player_stats_for_game(self, team_id, game_id, game_year, player_dict_list, team_dict_list, player_stat_names, players_per_team, testing_player_stats, from_predict):
+        for boxscore in boxscores_dict_list:
+            boxscore_game_id = boxscore['GAME_ID']
+            boxscore_team_id = boxscore['TEAM_ID']
+
+            try:
+                comment_value = float(boxscore['COMMENT'])
+            except:
+                comment_value = None
+            
+            '''print("type of boxscore_game_id:", type(boxscore_game_id))
+            print(f"type of game_id: {type(game_id)}")
+            print(f"type of boxscore_team_id: {type(boxscore_team_id)}")
+            print(f"type of team_id: {type(team_id)}")'''
+            
+            
+            if boxscore_game_id == game_id and boxscore_team_id == team_id and type(comment_value) == type(float('nan')):
+                # print(f"Found player {boxscore['PLAYER_ID']} who played in game {game_id} for team {team_id} with comment value: {boxscore['COMMENT']}")
+                players_in_game.append(boxscore['PLAYER_ID'])
+        
+        '''print(f"players_in_game: {players_in_game}")
+        ergd'''
+        return players_in_game
+
+    def get_player_stats_for_game(self, team_id, game_id, game_year, player_dict_list, team_dict_list, boxscores_dict_list, player_stat_names, players_per_team, testing_player_stats, from_predict):
 
         # should be in the same format as the player stats
+        
         list_of_team_stats = self.get_team_stats_for_game(team_id, game_year, team_dict_list)
+
+        players_in_game = self.find_players_who_played_in_game(team_id, game_id, boxscores_dict_list)
+        # print(f"players_in_game for team ID {team_id}, game ID {game_id}: {players_in_game}")
 
         # This line determines whether we are training on player stats or team stats! Comment it out to train on player stats. Edit: don't really have to worry about this now
         # *************************************************************************************************
 
         if not testing_player_stats:
             return list_of_team_stats
-
-        if not from_predict:
-            try:
-                df = boxscoretraditionalv2.BoxScoreTraditionalV2(game_id=game_id).get_data_frames()[0]
-                print(f"successfully fetched box score for game_id={game_id}")
-                print("df from boxscoretraditionalv2: ", df.head())
-                sys.exit(0)
-            except KeyError as e:
-                print(f"Error: Could not fetch box score for game_id={game_id}. Using team stats instead.")
                 
         
         # sys.exit(0)
@@ -214,11 +238,16 @@ class FormatData:
         for player in player_dict_list:
 
             player_list = []
+            player_id = player['PLAYER_ID']
             player_team_id = player['TEAM_ID']
             player_season = player['SEASON']
 
             if (player_team_id != team_id) or (player_season != game_year):
                 continue
+
+            if from_predict and not from_predict:  # If we are getting data for prediction, only include players who played in the game
+                if player_id not in players_in_game:
+                    continue
 
             # Add relevant player stats to player_list
 
@@ -226,10 +255,11 @@ class FormatData:
             if games == 0:
                 continue  # avoid division by zero
 
-            if player_counter >= max_players_per_team:
+            #if player_counter >= max_players_per_team:
                 '''print(f"Reached max players per team: {max_players_per_team}")
                 print(f"num of players = {player_counter}")'''
-                break
+            #    break
+            # We are not breaking here to allow for getting the best players who actually played in the game
 
             '''if print_info:  
                 print(f"found player")'''
@@ -259,13 +289,16 @@ class FormatData:
 
         # print(f"list_of_players: {len(list_of_players)}")
 
-        list_of_players = self.sort_players_by_stat(list_of_players, -1)  # Sort players by last stat (right now), should be plus_minus_rank
+        list_of_players = self.sort_players_by_stat(max_players_per_team, list_of_players, -1)  # Sort players by last stat (right now), should be plus_minus_rank
+
+        '''if len(list_of_players) < max_players_per_team:
+            print(f"Only found {len(list_of_players)} players for team ID {team_id} in game ID {game_id}, expected {max_players_per_team}")'''
 
         return list_of_players
 
 
 
-    def game_format(self, player_dict_list, game_dict_list, team_dict_list, player_stat_names, players_per_team, testing_player_stats, from_predict, get_scores=True):
+    def game_format(self, player_dict_list, game_dict_list, boxscores_dict_list, team_dict_list, player_stat_names, players_per_team, testing_player_stats, from_predict, get_scores=True):
 
         # players_per_team preset to 1 to assume we are getting team stats. 
 
@@ -279,8 +312,15 @@ class FormatData:
 
         # Individual game format
         # [game_id, [team1_id, team2_id], game_year, [team1_score, team2_score], [ {player1_team1_stats}, {player2_team1_stats}, ... ], [ {player1_team2_stats}, {player2_team2_stats}, ... ]]
-
+        counter = 0
         for game in game_dict_list:
+            #print(f"Processing game ID: {game['GAME_ID']}")
+            counter += 1
+            if counter % 200 == 0 or counter == 1:
+                print(f"Processed {counter} games out of {len(game_dict_list)}.")
+
+            '''if counter == 20:
+                return game_train_list'''
 
             game_list = []
 
@@ -306,10 +346,11 @@ class FormatData:
             #print(f"team1_score = {team1_score}, team2_score = {team2_score}")
             #print(f"plus-minus = {game['PLUS_MINUS']}")
 
-            team1_player_stats = self.get_player_stats_for_game(team_id, game_id, game_year, player_dict_list, team_dict_list, player_stat_names, players_per_team, testing_player_stats, from_predict)
-             
-
-            # return
+            team1_player_stats = self.get_player_stats_for_game(team_id, game_id, game_year, player_dict_list, team_dict_list, boxscores_dict_list, player_stat_names, players_per_team, testing_player_stats, from_predict)
+            
+            '''print(f"len of team1_player_stats: {len(team1_player_stats)} for game ID {game_id}, team ID {team_id}")
+            
+            return'''
 
             # continue if game_id is not included in a list inside game_train_list
             existing_game_ids = [g[0] for g in game_train_list]
@@ -425,7 +466,20 @@ class FormatData:
 
         return
     
-
+    def remove_non_matching_player_games(self, game_list, players_per_team):
+        for i, game in enumerate(game_list):
+            '''print(f"\nlen of game[4] : {len(game[4])}")
+            print(f"len of game[4][0]: {len(game[4][0])}")
+            try:
+                print(f"len of game[4][1]: {len(game[4][1])}")
+            except IndexError:
+                print(f"IndexError for game index {i}, game ID {game[0]}")
+                game_list.pop(i) # Might want to take this out later
+                continue'''
+            if len(game[4][0]) != players_per_team or len(game[4][1]) != players_per_team:
+                print(f"Found game in training data with incorrect number of players: Game ID {game[0]}, Team 1 players: {len(game[4][0])}, Team 2 players: {len(game[4][1])}")
+                game_list.pop(i)
+        return game_list
 
 
 
@@ -455,6 +509,12 @@ def main():
     test_game_dict_list = data_dict_list[3]
     train_teams_list = data_dict_list[4]
     test_teams_list = data_dict_list[5]
+    boxscores_dict_list = data_dict_list[6]
+
+    '''print(f"boxscores_dict_list length: {len(boxscores_dict_list)}")
+    print(f"boxscores_dict_list sample: {boxscores_dict_list[:1]}")
+    print(f"boxscores[0]['COMMENT'] type : {type(boxscores_dict_list[0]['COMMENT'])}, value: {boxscores_dict_list[0]['COMMENT']}")
+    return'''
 
 
     percentage_player_stat_names = data_formatter.percentage_player_stat_names
@@ -474,9 +534,25 @@ def main():
     print(f"stat_names: {len(player_stat_names)}")
 
 
-    game_train_list = data_formatter.game_format(train_player_dict_list, train_game_dict_list, train_teams_list, player_stat_names, players_per_team, testing_player_stats, from_predict=False)
-    game_test_list = data_formatter.game_format(test_player_dict_list, test_game_dict_list, test_teams_list, player_stat_names, players_per_team, testing_player_stats, from_predict=True)
-    print(f"game_train_list length: {len(game_train_list)}")
+    game_train_list = data_formatter.game_format(train_player_dict_list, train_game_dict_list, boxscores_dict_list, train_teams_list, player_stat_names, players_per_team, testing_player_stats, from_predict=False)
+    game_test_list = data_formatter.game_format(test_player_dict_list, test_game_dict_list, boxscores_dict_list, test_teams_list, player_stat_names, players_per_team, testing_player_stats, from_predict=True)
+    
+    # Remove games with player counts that do not match players_per_team
+    # If something goes wrong in this file or another, check here first
+    # Player counts are set in sort_players_by_stat function
+    game_train_list = data_formatter.remove_non_matching_player_games(game_train_list, players_per_team)
+    game_test_list = data_formatter.remove_non_matching_player_games(game_test_list, players_per_team)
+
+    '''print(f"game_train_list length: {len(game_train_list)}")
+    print(f"game_train_list[0] length: {len(game_train_list[0])}")
+    print(f"game_train_list[0][0]: {game_train_list[0][0]}")
+    print(f"game_train_list[0][1]: {game_train_list[0][1]}")
+    print(f"game_train_list[0][2]: {game_train_list[0][2]}")
+    print(f"game_train_list[0][3]: {game_train_list[0][3]}")
+    print(f"game_train_list[0][4]: {game_train_list[0][4]}")
+    print(f"game_train_list[0][5]: {game_train_list[0][5]}")
+
+    return'''
 
     # These two lists contain lists of 2 scores, one for each team in the game
     # The extended list of team scores now is in the right format, [[team1_score, team2_score], ...]. The only difference between this and
@@ -486,7 +562,11 @@ def main():
 
     ext_list_of_team_scores, list_of_stat_lists = data_formatter.list_of_stat_types(game_train_list)
 
+    print(f"len of game_train_list: {len(game_train_list)}\n")
+
     total_score_list = [ext_list_of_team_scores, alt_score_test_list, alt_score_train_list]
+    print(f"total_score_list length: {len(total_score_list)}")
+    # return
     # ext_list_of_team_scores and alt_score_train_list have the same amount of data, idk, ig ext_list of team_scores only has training data
     for item in total_score_list:
         print(f"len of score list: {len(item)}")

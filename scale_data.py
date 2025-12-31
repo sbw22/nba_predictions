@@ -54,10 +54,20 @@ class DataScaler:
         df = pd.read_csv(file_path, header=None)  # <-- keep the first CSV row as data
 
         ext_row = df.iloc[0, :].to_list()
+        # print(f"ext_row[0:5]: {ext_row[:5]}, type: {type(ext_row)}, length: {len(ext_row)}")
 
         ext_row = [float(score) for score in ext_row]
 
-        score_train_data = df.iloc[2, :].values.tolist()
+        try: 
+            score_train_data = df.iloc[2, :].values.tolist() # changed [2, :] to [1, :] because there is only one row of score data after the header (?)
+        except Exception as e:
+            print(f"Error reading score data from CSV: {e}")
+            score_train_data = df.iloc[1, :].values.tolist()
+
+        print(f"len of score_train_data: {len(score_train_data)}")
+
+        # print(f"score_train_data: {score_train_data[:5]}, type: {type(score_train_data)}, length: {len(score_train_data)}, type of first item: {type(score_train_data[0])}")
+        
 
         # score_train_list = ast.literal_eval(score_train_data)[:10]  # Limit to the first 1000 games for now
         
@@ -70,12 +80,14 @@ class DataScaler:
             '''if counter >= 1000: # This is just to limit the number of games for now. MAKE SURE THIS IS THE SAME NUMBER AS IN THE CORRESPONDING TRAIN_MODEL FUNCTIONS
                 break'''
             try:
+                print(f"game_scores: {game_scores}, type: {type(game_scores)}")
                 score_train_list.append(ast.literal_eval(game_scores))
             except Exception as e:
                 print(f"Error parsing game scores: {e}")
                 break
         
         print(f"score_train_list: {score_train_list[:5]}, type: {type(score_train_list)}, length: {len(score_train_list)}, type of first item: {type(score_train_list[0])}")
+        # sdfg
         
         # print(f"ext_row: {ext_row}")
         print(f"ext_row: {ext_row[:5]}")

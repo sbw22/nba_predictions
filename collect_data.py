@@ -1,5 +1,8 @@
-from nba_api.stats.endpoints import leaguedashplayerstats, leaguedashteamstats, leaguegamelog, boxscoretraditionalv2
+from nba_api.stats.endpoints import leaguedashplayerstats, leaguedashteamstats, leaguegamelog, boxscoretraditionalv2, scoreboardv2
 import pandas as pd
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Semaphore
 import time
 
 
@@ -32,7 +35,7 @@ class CollectGameAndPlayerData:
                 import nba_api.stats.endpoints as endpoints_module
                 endpoint_callable = getattr(endpoints_module, endpoint)
 
-            if endpoint != 'BoxScoreTraditionalV3':
+            if endpoint != 'BoxScoreTraditionalV2':
                 data = endpoint_callable(season=season_str)
             else:
                 data = endpoint_callable(game_id=season)  # Example game ID for boxscore data
@@ -53,6 +56,20 @@ class CollectGameAndPlayerData:
         return all_player_data
     
 
+    def collect_boxscore_data(self, game_id):
+
+        try:
+            df = boxscoretraditionalv2.BoxScoreTraditionalV2(
+                game_id=game_id,
+                timeout=10
+            ).get_data_frames()[0]
+
+            return [df]
+        except Exception as e:
+            print(f"Error retrieving boxscore data for game_id {game_id}: {e}")
+            return self.collect_boxscore_data(game_id)
+    
+
     def get_targeted_data(self, range_start, range_end, endpoint):
 
         all_data = []
@@ -66,27 +83,50 @@ class CollectGameAndPlayerData:
         players_df_test = pd.concat(all_data, ignore_index=True)
 
         return players_df_test
+
     
-    def get_boxscore_targeted_data(self, game_ids):
+    def get_boxscore_targeted_data(self, game_ids, max_workers=5, requests_per_minute=100):
+        """
+        Optimized parallel collection with rate limiting.
         
+        Args:
+            max_workers: number of concurrent threads (start with 5-10)
+            requests_per_minute: API rate limit (adjust based on NBA API limits)
+        """
         all_data = []
-
-
-        for game_id in game_ids:
-            print(f"Getting boxscore data for game_id: {game_id}")
-            boxscore_data = self.collect_data(game_id, 'BoxScoreTraditionalV2')
-            all_data.extend(boxscore_data)
-
-        boxscores_df = pd.concat(all_data, ignore_index=True)
-
-        return boxscores_df
+        delay_between_requests = 60.0 / requests_per_minute
+        rate_limiter = Semaphore(max_workers)
+        
+        def fetch_with_rate_limit(game_id):
+            with rate_limiter:
+                result = self.collect_boxscore_data(game_id)
+                time.sleep(delay_between_requests)
+                return result
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_game = {executor.submit(fetch_with_rate_limit, gid): gid 
+                            for gid in game_ids}
+            
+            for i, future in enumerate(as_completed(future_to_game)):
+                if i % 50 == 0:
+                    print(f"Completed {i}/{len(game_ids)} games")
+                
+                try:
+                    boxscore_data = future.result()
+                    all_data.extend(boxscore_data)
+                except Exception as e:
+                    game_id = future_to_game[future]
+                    print(f"Failed for game {game_id}: {e}")
+        
+        return pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
     
             
 
     def get_player_data(self):
 
-        starting_test_season = 2017
+        starting_test_season = 2022
 
+        # As of 12/27/2025, all data we are using is from 2000-2024 files.
 
         print(f"Collecting player data...")
         test_players_df = self.get_targeted_data(starting_test_season, 2025, 'LeagueDashPlayerStats')
@@ -99,7 +139,8 @@ class CollectGameAndPlayerData:
         test_games_df = self.get_targeted_data(starting_test_season, 2025, 'LeagueGameLog')
         test_games_df.to_csv('csv_data_files/nba_game_logs_2000-2024.csv', index=False)
 
-        '''train_games_df = self.get_targeted_data(2025, 2026, 'LeagueGameLog')
+        # IDK why train_games, train teams, and test teams were commented out, but uncommenting them for now
+        train_games_df = self.get_targeted_data(2025, 2026, 'LeagueGameLog')
         train_games_df.to_csv('csv_data_files/nba_game_logs_2025.csv', index=False)
 
         print(f"Collecting team data...")
@@ -107,14 +148,18 @@ class CollectGameAndPlayerData:
         train_teams_df.to_csv('csv_data_files/nba_team_averages_2000-2024.csv', index=False)
 
         test_teams_df = self.get_targeted_data(2025, 2026, 'LeagueDashTeamStats')
-        test_teams_df.to_csv('csv_data_files/nba_team_averages_2025.csv', index=False)'''
+        test_teams_df.to_csv('csv_data_files/nba_team_averages_2025.csv', index=False)
+
         
         test_games_ids = test_games_df['GAME_ID'].tolist()
         unique_test_games_ids = list(dict.fromkeys(test_games_ids))
 
         print(f"getting boxscore data...")
-        train_games_players_df = self.get_targeted_data(2025, 2026, 'BoxScoreTraditionalV3')
-        train_games_players_df.to_csv('csv_data_files/nba_boxscores_2000-2024.csv', index=False)
+        #boxscores_df = self.get_targeted_data(2025, 2026, 'BoxScoreTraditionalV2')
+        #boxscores_df = self.get_boxscore_targeted_data(unique_test_games_ids)
+        #boxscores_df.to_csv('csv_data_files/nba_boxscores_2000-2024.csv', index=False)
+
+        # Commented out above lines after adding rate limiting and multithreading to boxscore data collection
 
 
         return test_players_df, train_players_df, test_games_df, train_games_df, test_teams_df, train_teams_df

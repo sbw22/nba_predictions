@@ -111,6 +111,7 @@ def getting_future_game_data(data_formatter, train_game_dict_list):
     test_game_dict_list = data_dict_list[3]
     train_team_dict_list = data_dict_list[4]
     test_team_dict_list = data_dict_list[5]
+    boxscore_dict_list = data_dict_list[6]
 
 
 
@@ -163,8 +164,8 @@ def getting_future_game_data(data_formatter, train_game_dict_list):
 
         # Change type of stats we are testing on and whether we are testing on player or team stats here !!! **********************************************************************************************************************
         print(f"Getting player stats for game_id: {game_id}")
-        team1_player_stats = data_formatter.get_player_stats_for_game(team1_id, game_id, game_year, test_player_dict_list, test_team_dict_list, player_stat_names, player_stats_per_team, testing_player_stats, True)
-        team2_player_stats = data_formatter.get_player_stats_for_game(team2_id, game_id, game_year, test_player_dict_list, test_team_dict_list, player_stat_names, player_stats_per_team, testing_player_stats, True)
+        team1_player_stats = data_formatter.get_player_stats_for_game(team1_id, game_id, game_year, test_player_dict_list, test_team_dict_list, boxscore_dict_list, player_stat_names, player_stats_per_team, testing_player_stats, True)
+        team2_player_stats = data_formatter.get_player_stats_for_game(team2_id, game_id, game_year, test_player_dict_list, test_team_dict_list, boxscore_dict_list, player_stat_names, player_stats_per_team, testing_player_stats, True)
 
         print(f"after getting player stats for game_id: {game_id}")
 
