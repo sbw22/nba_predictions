@@ -3,6 +3,7 @@ import sys
 import csv
 import pickle
 from nba_api.stats.endpoints import boxscoretraditionalv2
+from get_unavailable_players import GetUnavailablePlayers
 
 
 
@@ -182,12 +183,35 @@ class FormatData:
         sorted_players = sorted(list_of_players, key=lambda x: x[stat_index], reverse=True)
         return sorted_players[:max_players_per_team]
     
-    def find_players_who_played_in_game(self, team_id, game_id, boxscores_dict_list):
+    def find_players_who_played_in_game(self, team_id, game_id, boxscores_dict_list, player_names, from_predict):
+        
+
         players_in_game = []
+
+        unavailable_players = []
+        unavailablePlayersClass = GetUnavailablePlayers()
+        all_unavailable_players = unavailablePlayersClass.comb_teams
+        
+        if from_predict:
+            # while True:
+            '''player_name = input("Enter the name of an unavailable player for this team (or type 'done' to finish): ")
+            if player_name.lower() == 'done':
+                break
+            # If the player name is valid, add to the list
+            if player_name.lower() in player_names:
+                unavailable_players.append(player_name.lower())
+                print(f"Added {player_name} to unavailable players list.")
+            else:
+                print("Player name not found. Please try again. Make sure you type in the exact name as it appears in the dataset (ex. Cooper Flagg).")'''
+
+            unavailable_players = [player.lower() for player in all_unavailable_players]
+
+            return unavailable_players
 
         for boxscore in boxscores_dict_list:
             boxscore_game_id = boxscore['GAME_ID']
             boxscore_team_id = boxscore['TEAM_ID']
+            boxscore_player_name = boxscore['PLAYER_NAME']
 
             try:
                 comment_value = float(boxscore['COMMENT'])
@@ -211,10 +235,13 @@ class FormatData:
     def get_player_stats_for_game(self, team_id, game_id, game_year, player_dict_list, team_dict_list, boxscores_dict_list, player_stat_names, players_per_team, testing_player_stats, from_predict):
 
         # should be in the same format as the player stats
+        player_names = self.find_player_names(player_dict_list)
         
         list_of_team_stats = self.get_team_stats_for_game(team_id, game_year, team_dict_list)
 
-        players_in_game = self.find_players_who_played_in_game(team_id, game_id, boxscores_dict_list)
+        # If we are getting prediction data, this returns a list of unavailable players
+        players_in_game = self.find_players_who_played_in_game(team_id, game_id, boxscores_dict_list, player_names, from_predict)
+
         # print(f"players_in_game for team ID {team_id}, game ID {game_id}: {players_in_game}")
 
         # This line determines whether we are training on player stats or team stats! Comment it out to train on player stats. Edit: don't really have to worry about this now
@@ -241,11 +268,15 @@ class FormatData:
             player_id = player['PLAYER_ID']
             player_team_id = player['TEAM_ID']
             player_season = player['SEASON']
+            player_name = player['PLAYER_NAME']
 
             if (player_team_id != team_id) or (player_season != game_year):
                 continue
 
-            if from_predict and not from_predict:  # If we are getting data for prediction, only include players who played in the game
+            if from_predict:  # If we are getting data for prediction, remove players who are unavailable
+                if player_name in players_in_game: # If current player name is in the unavailable players list, skip player
+                    continue
+            else:  # If we are getting training data, only include players who played in the game
                 if player_id not in players_in_game:
                     continue
 
@@ -480,6 +511,17 @@ class FormatData:
                 print(f"Found game in training data with incorrect number of players: Game ID {game[0]}, Team 1 players: {len(game[4][0])}, Team 2 players: {len(game[4][1])}")
                 game_list.pop(i)
         return game_list
+    
+
+    # Returns a list of player names in lowercase
+    def find_player_names(self, player_dict_list):
+        player_name_list = []
+        for player in player_dict_list:
+            player_name = player['PLAYER_NAME'].lower()
+            player_name_list.append(player_name)
+        
+        # print(f"Sample of player_name_list: {player_name_list[:10]}")
+        return player_name_list
 
 
 
@@ -535,7 +577,7 @@ def main():
 
 
     game_train_list = data_formatter.game_format(train_player_dict_list, train_game_dict_list, boxscores_dict_list, train_teams_list, player_stat_names, players_per_team, testing_player_stats, from_predict=False)
-    game_test_list = data_formatter.game_format(test_player_dict_list, test_game_dict_list, boxscores_dict_list, test_teams_list, player_stat_names, players_per_team, testing_player_stats, from_predict=True)
+    game_test_list = data_formatter.game_format(test_player_dict_list, test_game_dict_list, boxscores_dict_list, test_teams_list, player_stat_names, players_per_team, testing_player_stats, from_predict=False)
     
     # Remove games with player counts that do not match players_per_team
     # If something goes wrong in this file or another, check here first

@@ -1,7 +1,17 @@
 from tensorflow.keras.layers import Dense, LayerNormalization, Dropout, Add, Input, Lambda
 from tensorflow.keras.models import Model
 import tensorflow as tf
-
+from keras.regularizers import l2
+from tensorflow.keras.layers import (
+    Flatten, 
+    Dropout, 
+    BatchNormalization, 
+    Concatenate,           
+    Input, 
+    LayerNormalization, 
+    Lambda, 
+    MultiHeadAttention     
+)
 
 class ResidualArch:
 
@@ -71,8 +81,8 @@ class ResidualArch:
         
         return model
 
-
-    def build_model_with_residuals_new(self, num_players_per_team, num_features, loss):
+    # Apparently the other uncommented version is better, need to check claude (had chat with claude 2:00 AM on 12/31/25) about why this version is better
+    '''def build_model_with_residuals_new(self, num_players_per_team, num_features, loss):
         """
         New model architecture (structured input) with residual connections.
         For use when testing_player_stats = False
@@ -118,6 +128,85 @@ class ResidualArch:
             optimizer='adamW',
             loss=loss,  # Use custom loss passed as argument, replaces 'mse'
             metrics=['mae']
+        )
+        
+        return model'''
+    
+    def build_model_with_residuals_new(self, num_players_per_team, num_features, loss):
+        """
+        Optimized residual architecture with attention and better aggregation
+        """
+        input_layer = Input(shape=(2, num_players_per_team, num_features))
+        
+        # Initial projection with stronger normalization
+        x = Dense(128, activation='silu', kernel_regularizer=l2(0.001))(input_layer)
+        x = LayerNormalization()(x)
+        x = Dropout(0.15)(x)  # Slightly higher dropout early
+        
+        # Deeper player-level feature extraction
+        x = self.residual_block(x, 128, dropout_rate=0.1)
+        x = self.residual_block(x, 128, dropout_rate=0.1)  # Keep dim for stable learning
+        x = self.residual_block(x, 64, dropout_rate=0.1)
+        
+        # ADD: Multi-head attention to capture player interactions
+        # This lets the model learn which players are most relevant
+        attn_output = MultiHeadAttention(
+            num_heads=4, 
+            key_dim=64,
+            dropout=0.1
+        )(x, x)
+        x = LayerNormalization()(x + attn_output)  # Residual connection
+        
+        x = self.residual_block(x, 64, dropout_rate=0.1)
+        x = self.residual_block(x, 32, dropout_rate=0.1)
+        
+        # IMPROVED: Richer team aggregation (mean + max + min)
+        team_mean = Lambda(lambda t: tf.reduce_mean(t, axis=2))(x)
+        team_max = Lambda(lambda t: tf.reduce_max(t, axis=2))(x)
+        team_std = Lambda(lambda t: tf.math.reduce_std(t, axis=2))(x)  # Capture spread
+        
+        team_embed = Concatenate(axis=-1)([team_mean, team_max, team_std])
+        # shape: (batch, 2, 96) = 2 teams × (32 mean + 32 max + 32 std)
+        
+        # ADD: Cross-team attention (let teams "see" each other)
+        team_embed = LayerNormalization()(team_embed)
+        cross_attn = MultiHeadAttention(
+            num_heads=2,
+            key_dim=48,
+            dropout=0.1
+        )(team_embed, team_embed)
+        team_embed = LayerNormalization()(team_embed + cross_attn)
+        
+        # Flatten to game-level representation
+        game_embed = Flatten()(team_embed)
+        # shape: (batch, 192)
+        
+        # Deeper final prediction network
+        h = Dense(256, activation='silu', kernel_regularizer=l2(0.001))(game_embed)
+        h = LayerNormalization()(h)
+        h = Dropout(0.2)(h)
+        
+        h = self.residual_block(h, 256, dropout_rate=0.15)
+        h = self.residual_block(h, 128, dropout_rate=0.15)
+        h = self.residual_block(h, 64, dropout_rate=0.1)
+        h = self.residual_block(h, 32, dropout_rate=0.1)
+        
+        # Output layer
+        output = Dense(2, activation='linear')(h)
+        
+        model = Model(inputs=input_layer, outputs=output)
+        
+        # IMPROVED: Better optimizer configuration
+        optimizer = tf.keras.optimizers.AdamW(
+            learning_rate=0.001,
+            weight_decay=0.01,
+            clipnorm=1.0  # Gradient clipping for stability
+        )
+        
+        model.compile(
+            optimizer=optimizer,
+            loss=loss,
+            metrics=['mae', 'mse']  # Track both metrics
         )
         
         return model
@@ -175,3 +264,7 @@ class ResidualArch:
         out = tf.keras.activations.silu(out)  # Activation after addition
         
         return out
+    
+
+
+    

@@ -138,6 +138,7 @@ def getting_future_game_data(data_formatter, train_game_dict_list):
 
     for i in range(len(scoreboard_data_id_lists[0])):
         print(f"\nGetting data for game {i+1}/{len(scoreboard_data_id_lists[0])}")
+        
 
 
         game_id = scoreboard_data_id_lists[0][i]
@@ -148,6 +149,7 @@ def getting_future_game_data(data_formatter, train_game_dict_list):
 
 
         team1_name, team2_name = find_team_names(team1_id, team2_id, train_game_dict_list)
+        print(f"{team1_name} vs {team2_name}")
 
         # print(f"game_year_str: {game_year}")
 

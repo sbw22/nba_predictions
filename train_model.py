@@ -243,7 +243,7 @@ def train_model(X, y, model):
 
 def run_model(model, X, y, score_scaler, team_names, year_list, pred=False):
     # Evaluate the model
-    predictions = model.predict(X, batch_size=1, verbose=0)
+    predictions = model.predict(X, batch_size=64, verbose=0)
     # loss, accuracy = model.evaluate(X, y)
 
     scaled_up_guesses = score_scaler.inverse_transform(predictions)
@@ -531,8 +531,18 @@ def xgboost_model(X_train_structured, y_train, X_test_structured, y_test, X_pred
     return
 
 
+'''def enter_unavailable_players():
+    # Function to enter players that are not playing
+    absent_players = []  # Example: ['Player A', 'Player B']
+
+    return absent_players'''
+
 
 def main():
+
+    # Would love to add a class or something of lists that contain all players that are out. I can change the list each day before running the predictions.
+
+
     data_scaler = DataScaler()
     data_formatter = FormatData()
     players_per_team = data_formatter.players_per_team
@@ -543,7 +553,6 @@ def main():
     # Your known values ------ THESE MIGHT CHANGE IF I CHANGE THE NUMBER OF PLAYERS PER TEAM IN ARRANGE_DATA - Edit: Might not have to worry about this anymore
     num_teams = 2
     num_players = players_per_team
-
 
 
     import_list = import_scaled_game_data()
@@ -642,7 +651,9 @@ def main():
 
     '''game_ids_train = game_ids.copy()[:-num_of_test_samples]
     game_ids_test = game_ids[-num_of_test_samples:]'''
-
+    print(f"type X_train before reshape: {type(X_train)}")
+    print(f"type X_test before reshape: {type(X_test)}")
+    print(f"type X_pred before reshape: {type(X_pred)}")
     X_train, X_test, X_pred = reshape_input([X_train, X_test, X_pred])
 
     '''y_train = y_train.reshape(-1, 2)
